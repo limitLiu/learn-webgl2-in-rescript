@@ -1,0 +1,10 @@
+@font-face {
+  font-family: 'LXGWWenKaiScreen';
+  src: url('LXGWWenKaiScreen.ttf') format('truetype');
+}
+
+@mixin LXGWWenKaiScreen {
+  font-family: 'LXGWWenKaiScreen';
+  font-weight: normal;
+  font-style: normal;
+}

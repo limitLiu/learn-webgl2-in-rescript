@@ -1,0 +1,31 @@
+[package]
+name = "learn_webgl2"
+version = "0.0.0"
+description = "Learn WebGL2 in ReScript"
+authors = ["Limit Liu"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "2.0.3", features = [] }
+
+[dependencies]
+tauri = { version = "2.1.1", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-http = "2.0.3"
+tauri-plugin-shell = "2.0.2"
+tauri-plugin-fs = "2.0.3"
+tauri-plugin-process = "2.0.1"
+tauri-plugin-notification = "2.0.1"
+tauri-plugin-os = "2.0.1"
+tauri-plugin-clipboard-manager = "2.0.2"
+tauri-plugin-dialog = "2.0.3"
+
+[features]
+# This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-global-shortcut = "2.0.1"

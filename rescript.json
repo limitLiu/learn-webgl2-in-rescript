@@ -1,0 +1,24 @@
+{
+  "name": "learn-webgl2",
+  "sources": {
+    "dir": "src",
+    "subdirs": true
+  },
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".bs.js",
+  "ppx-flags": [],
+  "jsx": {
+    "version": 4,
+    "mode": "automatic"
+  },
+  "uncurried": true,
+  "namespace": true,
+  "bsc-flags": ["-open RescriptCore"],
+  "bs-dependencies": ["@rescript/core", "rescript-webapi"],
+  "warnings": {
+    "error": "+101"
+  }
+}
