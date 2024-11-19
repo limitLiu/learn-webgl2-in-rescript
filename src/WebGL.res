@@ -42,6 +42,10 @@ external canvas: t => Dom.element = "canvas"
 @get external width: Dom.element => float = "width"
 @get external height: Dom.element => float = "height"
 
+@send external getUniformLocation: (t, programT, string) => int = "getUniformLocation"
+
+@send external uniform2f: (t, int, float, float) => unit = "uniform2f"
+
 let make = (canvas: Dom.element) => canvas->getContextWebGL2
 
 let makeShader = (gl: t, kind: shader) => {
