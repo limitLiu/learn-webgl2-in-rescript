@@ -12,11 +12,29 @@ let vsGLSL = `#version 300 es
 
 let fsGLSL = `#version 300 es
   precision highp float;
+  uniform vec4 u_color;
   out vec4 outColor;
   void main() {
-    outColor = vec4(1, 0, 0.5, 1);
+    outColor = u_color;
   }
 `
+
+let randomInRange = range => {
+  Math.floor(Math.random() *. range)
+}
+
+let rectangle = (gl: WebGL.t, x, y, width, height) => {
+  open Webapi.Canvas.WebGl
+  let x1 = x
+  let x2 = x +. width
+  let y1 = y
+  let y2 = y +. height
+  gl->WebGL.bufferFloatData(
+    _ARRAY_BUFFER,
+    [x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2]->Float32Array.fromArray,
+    _STATIC_DRAW,
+  )
+}
 
 let draw = (canvas: Dom.element) => {
   open Webapi.Canvas.WebGl
@@ -29,14 +47,16 @@ let draw = (canvas: Dom.element) => {
     ->WebGL.makeProgram(v, f)
     ->Option.map(program => {
       let aPosition = gl->getAttribLocation(program, "a_position")
+
       let uResolution = gl->WebGL.getUniformLocation(program, "u_resolution")
+      let uColor = gl->WebGL.getUniformLocation(program, "u_color")
+
       let vertexBuffer = gl->createBuffer
-      gl->bindBuffer(_ARRAY_BUFFER, vertexBuffer)
-      let indices = [10., 20., 80., 20., 10., 30., 10., 30., 80., 20., 80., 30.]
-      gl->WebGL.bufferFloatData(_ARRAY_BUFFER, indices->Float32Array.fromArray, _STATIC_DRAW)
       let vao = gl->WebGL.createVertexArray
       gl->WebGL.bindVertexArray(vao)
       gl->enableVertexAttribArray(aPosition)
+      gl->bindBuffer(_ARRAY_BUFFER, vertexBuffer)
+
       let size = 2
       let kind = _FLOAT
       let normalize = false
@@ -51,11 +71,19 @@ let draw = (canvas: Dom.element) => {
       gl->useProgram(program)
       gl->WebGL.bindVertexArray(vao)
       gl->WebGL.uniform2f(uResolution, width, height)
-
-      let primitiveType = _TRIANGLES
-      let offset = 0
-      let count = 6
-      gl->drawArrays(primitiveType, offset, count)
+      Array.make(~length=50, 0)->Array.forEach(_ => {
+        gl->rectangle(
+          randomInRange(300.),
+          randomInRange(300.),
+          randomInRange(300.),
+          randomInRange(300.),
+        )
+        gl->WebGL.uniform4f(uColor, Math.random(), Math.random(), Math.random(), 1.)
+        let primitiveType = _TRIANGLES
+        let offset = 0
+        let count = 6
+        gl->drawArrays(primitiveType, offset, count)
+      })
     })
     ->ignore
   | _ => ()
