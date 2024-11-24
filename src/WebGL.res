@@ -4,10 +4,25 @@ type t = glT
 
 type vertexArrayT
 
+type textureT
+
 type shader = Vertex(string) | Fragment(string)
 
 let _COMPILE_STATUS = 35713
 let _LINK_STATUS = 35714
+let _TEXTURE0 = 33984
+let _TEXTURE_2D = 3553
+
+let _TEXTURE_MAG_FILTER = 10240
+let _TEXTURE_MIN_FILTER = 10241
+let _TEXTURE_WRAP_S = 10242
+let _TEXTURE_WRAP_T = 10243
+
+let _CLAMP_TO_EDGE = 33071
+let _NEAREST = 9728
+
+let _RGBA = 6408
+let _UNSIGNED_BYTE = 5121
 
 @send
 external bufferFloatData: (t, int, Float32Array.t, int) => unit = "bufferData"
@@ -30,6 +45,17 @@ external deleteProgram: (t, programT) => unit = "deleteShader"
 @send
 external createVertexArray: t => vertexArrayT = "createVertexArray"
 
+@send external createTexture: t => textureT = "createTexture"
+
+@send external activeTexture: (t, int) => unit = "activeTexture"
+
+@send external bindTexture: (t, int, textureT) => unit = "bindTexture"
+
+@send external texParameteri: (t, int, int, int) => unit = "texParameteri"
+
+@send
+external texImage2D: (t, int, int, int, int, int, Dom.element) => unit = "texImage2D"
+
 @send
 external bindVertexArray: (t, vertexArrayT) => unit = "bindVertexArray"
 
@@ -42,10 +68,14 @@ external canvas: t => Dom.element = "canvas"
 @get external width: Dom.element => float = "width"
 @get external height: Dom.element => float = "height"
 
+@get external clientWidth: Dom.element => float = "clientWidth"
+@get external clientHeight: Dom.element => float = "clientHeight"
+
 @send external getUniformLocation: (t, programT, string) => int = "getUniformLocation"
 
 @send external uniform2f: (t, int, float, float) => unit = "uniform2f"
 @send external uniform4f: (t, int, float, float, float, float) => unit = "uniform4f"
+@send external uniform1i: (t, int, float) => unit = "uniform1i"
 
 let make = (canvas: Dom.element) => canvas->getContextWebGL2
 

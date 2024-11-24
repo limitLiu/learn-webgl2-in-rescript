@@ -2061,6 +2061,7 @@ dependencies = [
  "tauri-plugin-os",
  "tauri-plugin-process",
  "tauri-plugin-shell",
+ "thiserror 2.0.3",
 ]
 
 [[package]]

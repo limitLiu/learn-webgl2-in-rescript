@@ -1,21 +1,29 @@
 let vsGLSL = `#version 300 es
   in vec2 a_position;
+  in vec2 a_texCoord;
+
   uniform vec2 u_resolution;
+  out vec2 v_texCoord;
 
   void main() {
     vec2 zeroToOne = a_position / u_resolution;
     vec2 zeroToTwo = zeroToOne * 2.0;
     vec2 clipSpace = zeroToTwo - 1.0;
     gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+    v_texCoord = a_texCoord;
   }
 `
 
 let fsGLSL = `#version 300 es
   precision highp float;
-  uniform vec4 u_color;
+
+  uniform sampler2D u_image;
+
+  in vec2 v_texCoord;
   out vec4 outColor;
+
   void main() {
-    outColor = u_color;
+    outColor = texture(u_image, v_texCoord);
   }
 `
 
@@ -36,7 +44,7 @@ let rectangle = (gl: WebGL.t, x, y, width, height) => {
   )
 }
 
-let draw = (canvas: Dom.element) => {
+let draw = (canvas: Dom.element, image: Dom.element) => {
   open Webapi.Canvas.WebGl
   let gl = canvas->WebGL.make
   let vs = gl->WebGL.makeShader(Vertex(vsGLSL))
@@ -47,13 +55,15 @@ let draw = (canvas: Dom.element) => {
     ->WebGL.makeProgram(v, f)
     ->Option.map(program => {
       let aPosition = gl->getAttribLocation(program, "a_position")
+      let aTexCoord = gl->getAttribLocation(program, "a_texCoord")
 
       let uResolution = gl->WebGL.getUniformLocation(program, "u_resolution")
-      let uColor = gl->WebGL.getUniformLocation(program, "u_color")
+      let uImage = gl->WebGL.getUniformLocation(program, "u_image")
 
-      let vertexBuffer = gl->createBuffer
       let vao = gl->WebGL.createVertexArray
       gl->WebGL.bindVertexArray(vao)
+
+      let vertexBuffer = gl->createBuffer
       gl->enableVertexAttribArray(aPosition)
       gl->bindBuffer(_ARRAY_BUFFER, vertexBuffer)
 
@@ -63,6 +73,40 @@ let draw = (canvas: Dom.element) => {
       let stride = 0
       let offset = 0
       gl->vertexAttribPointer(aPosition, size, kind, normalize, stride, offset)
+
+      let texCoordBuffer = gl->createBuffer
+      gl->bindBuffer(_ARRAY_BUFFER, texCoordBuffer)
+      gl->WebGL.bufferFloatData(
+        _ARRAY_BUFFER,
+        [0., 0., 1.0, 0., 0., 1., 0., 1., 1., 0., 1., 1.]->Float32Array.fromArray,
+        _STATIC_DRAW,
+      )
+      gl->enableVertexAttribArray(aTexCoord)
+
+      let size = 2
+      let kind = _FLOAT
+      let normalize = false
+      let stride = 0
+      let offset = 0
+      gl->vertexAttribPointer(aTexCoord, size, kind, normalize, stride, offset)
+
+      let texture = gl->WebGL.createTexture
+      gl->WebGL.activeTexture(WebGL._TEXTURE0)
+      gl->WebGL.bindTexture(WebGL._TEXTURE_2D, texture)
+
+      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_WRAP_S, WebGL._CLAMP_TO_EDGE)
+      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_WRAP_T, WebGL._CLAMP_TO_EDGE)
+      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_MIN_FILTER, WebGL._NEAREST)
+      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_MAG_FILTER, WebGL._NEAREST)
+
+      let mipLevel = 0
+      let internalFormat = WebGL._RGBA
+      let srcFormat = WebGL._RGBA
+      let srcType = WebGL._UNSIGNED_BYTE
+      gl->WebGL.texImage2D(WebGL._TEXTURE_2D, mipLevel, internalFormat, srcFormat, srcType, image)
+
+      canvas->Webapi.Canvas.CanvasElement.setWidth(Window.innerWidth * Window.devicePixelRatio)
+      canvas->Webapi.Canvas.CanvasElement.setHeight(Window.innerHeight * Window.devicePixelRatio)
       let width = gl->WebGL.canvas->WebGL.width
       let height = gl->WebGL.canvas->WebGL.height
       gl->WebGL.viewport(0., 0., width, height)
@@ -71,19 +115,14 @@ let draw = (canvas: Dom.element) => {
       gl->useProgram(program)
       gl->WebGL.bindVertexArray(vao)
       gl->WebGL.uniform2f(uResolution, width, height)
-      Array.make(~length=50, 0)->Array.forEach(_ => {
-        gl->rectangle(
-          randomInRange(300.),
-          randomInRange(300.),
-          randomInRange(300.),
-          randomInRange(300.),
-        )
-        gl->WebGL.uniform4f(uColor, Math.random(), Math.random(), Math.random(), 1.)
-        let primitiveType = _TRIANGLES
-        let offset = 0
-        let count = 6
-        gl->drawArrays(primitiveType, offset, count)
-      })
+      gl->WebGL.uniform1i(uImage, 0.)
+      gl->bindBuffer(_ARRAY_BUFFER, vertexBuffer)
+
+      gl->rectangle(0., 0., image->WebGL.width, image->WebGL.height)
+      let primitiveType = _TRIANGLES
+      let offset = 0
+      let count = 6
+      gl->drawArrays(primitiveType, offset, count)
     })
     ->ignore
   | _ => ()
