@@ -19,11 +19,25 @@ let fsGLSL = `#version 300 es
 
   uniform sampler2D u_image;
 
+  uniform float u_kernel[9];
+  uniform float u_kernel_weight;
+
   in vec2 v_texCoord;
   out vec4 outColor;
 
   void main() {
-    outColor = texture(u_image, v_texCoord);
+    vec2 aPixel = vec2(1) / vec2(textureSize(u_image, 0));
+    vec4 colorSum =
+      texture(u_image, v_texCoord + aPixel * vec2(-1, -1)) * u_kernel[0] +
+      texture(u_image, v_texCoord + aPixel * vec2( 0, -1)) * u_kernel[1] +
+      texture(u_image, v_texCoord + aPixel * vec2( 1, -1)) * u_kernel[2] +
+      texture(u_image, v_texCoord + aPixel * vec2(-1,  0)) * u_kernel[3] +
+      texture(u_image, v_texCoord + aPixel * vec2( 0,  0)) * u_kernel[4] +
+      texture(u_image, v_texCoord + aPixel * vec2( 1,  0)) * u_kernel[5] +
+      texture(u_image, v_texCoord + aPixel * vec2(-1,  1)) * u_kernel[6] +
+      texture(u_image, v_texCoord + aPixel * vec2( 0,  1)) * u_kernel[7] +
+      texture(u_image, v_texCoord + aPixel * vec2( 1,  1)) * u_kernel[8];
+    outColor = vec4((colorSum / u_kernel_weight).rgb, 1);
   }
 `
 
@@ -59,6 +73,8 @@ let draw = (canvas: Dom.element, image: Dom.element) => {
 
       let uResolution = gl->WebGL.getUniformLocation(program, "u_resolution")
       let uImage = gl->WebGL.getUniformLocation(program, "u_image")
+      let uKernel = gl->WebGL.getUniformLocation(program, "u_kernel")
+      let uKernelWeight = gl->WebGL.getUniformLocation(program, "u_kernel_weight")
 
       let vao = gl->WebGL.createVertexArray
       gl->WebGL.bindVertexArray(vao)
@@ -109,6 +125,9 @@ let draw = (canvas: Dom.element, image: Dom.element) => {
       canvas->Webapi.Canvas.CanvasElement.setHeight(Window.innerHeight * Window.devicePixelRatio)
       let width = gl->WebGL.canvas->WebGL.width
       let height = gl->WebGL.canvas->WebGL.height
+      gl->bindBuffer(_ARRAY_BUFFER, vertexBuffer)
+      gl->rectangle(0., 0., image->WebGL.width, image->WebGL.height)
+
       gl->WebGL.viewport(0., 0., width, height)
       gl->clearColor(0.75, 0.85, 0.8, 1.0)
       gl->clear(lor(_COLOR_BUFFER_BIT, _DEPTH_BUFFER_BIT))
@@ -116,9 +135,12 @@ let draw = (canvas: Dom.element, image: Dom.element) => {
       gl->WebGL.bindVertexArray(vao)
       gl->WebGL.uniform2f(uResolution, width, height)
       gl->WebGL.uniform1i(uImage, 0.)
-      gl->bindBuffer(_ARRAY_BUFFER, vertexBuffer)
 
-      gl->rectangle(0., 0., image->WebGL.width, image->WebGL.height)
+      let unsharpen = [-1., -1., -1., -1., 9., -1., -1., -1., -1.]
+      gl->WebGL.uniform1fv(uKernel, unsharpen)
+      let weight = unsharpen->Array.reduce(0., (a, b) => a +. b)
+      gl->WebGL.uniform1f(uKernelWeight, weight <= 0. ? 1. : weight)
+
       let primitiveType = _TRIANGLES
       let offset = 0
       let count = 6

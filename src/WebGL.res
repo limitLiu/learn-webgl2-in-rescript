@@ -73,9 +73,11 @@ external canvas: t => Dom.element = "canvas"
 
 @send external getUniformLocation: (t, programT, string) => int = "getUniformLocation"
 
+@send external uniform1f: (t, int, float) => unit = "uniform1f"
 @send external uniform2f: (t, int, float, float) => unit = "uniform2f"
 @send external uniform4f: (t, int, float, float, float, float) => unit = "uniform4f"
 @send external uniform1i: (t, int, float) => unit = "uniform1i"
+@send external uniform1fv: (t, int, array<float>) => unit = "uniform1fv"
 
 let make = (canvas: Dom.element) => canvas->getContextWebGL2
 
