@@ -8,10 +8,16 @@ type textureT
 
 type shader = Vertex(string) | Fragment(string)
 
+type frameBufferT
+
 let _COMPILE_STATUS = 35713
 let _LINK_STATUS = 35714
 let _TEXTURE0 = 33984
 let _TEXTURE_2D = 3553
+
+let _COLOR_ATTACHMENT0 = 36064
+
+let _FRAMEBUFFER = 36160
 
 let _TEXTURE_MAG_FILTER = 10240
 let _TEXTURE_MIN_FILTER = 10241
@@ -22,7 +28,7 @@ let _CLAMP_TO_EDGE = 33071
 let _NEAREST = 9728
 
 let _RGBA = 6408
-let _UNSIGNED_BYTE = 5121
+// let _UNSIGNED_BYTE = 5121
 
 @send
 external bufferFloatData: (t, int, Float32Array.t, int) => unit = "bufferData"
@@ -53,8 +59,30 @@ external createVertexArray: t => vertexArrayT = "createVertexArray"
 
 @send external texParameteri: (t, int, int, int) => unit = "texParameteri"
 
+@send external bindFramebuffer: (t, int, Nullable.t<frameBufferT>) => unit = "bindFramebuffer"
+
+@send
+external framebufferTexture2D: (t, int, int, int, textureT, int) => unit = "framebufferTexture2D"
+
 @send
 external texImage2D: (t, int, int, int, int, int, Dom.element) => unit = "texImage2D"
+
+@send
+external texImage2DWithPixels: (
+  t,
+  int,
+  int,
+  int,
+  float,
+  float,
+  int,
+  int,
+  int,
+  Nullable.t<'a>,
+) => unit = "texImage2D"
+
+@send
+external createFramebuffer: t => frameBufferT = "createFramebuffer"
 
 @send
 external bindVertexArray: (t, vertexArrayT) => unit = "bindVertexArray"
@@ -76,7 +104,7 @@ external canvas: t => Dom.element = "canvas"
 @send external uniform1f: (t, int, float) => unit = "uniform1f"
 @send external uniform2f: (t, int, float, float) => unit = "uniform2f"
 @send external uniform4f: (t, int, float, float, float, float) => unit = "uniform4f"
-@send external uniform1i: (t, int, float) => unit = "uniform1i"
+@send external uniform1i: (t, int, int) => unit = "uniform1i"
 @send external uniform1fv: (t, int, array<float>) => unit = "uniform1fv"
 
 let make = (canvas: Dom.element) => canvas->getContextWebGL2

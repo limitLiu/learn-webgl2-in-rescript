@@ -3,13 +3,16 @@ let vsGLSL = `#version 300 es
   in vec2 a_texCoord;
 
   uniform vec2 u_resolution;
+
+  uniform float u_flipY;
+
   out vec2 v_texCoord;
 
   void main() {
     vec2 zeroToOne = a_position / u_resolution;
     vec2 zeroToTwo = zeroToOne * 2.0;
     vec2 clipSpace = zeroToTwo - 1.0;
-    gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+    gl_Position = vec4(clipSpace * vec2(1, u_flipY), 0, 1);
     v_texCoord = a_texCoord;
   }
 `
@@ -73,7 +76,8 @@ let draw = (canvas: Dom.element, image: Dom.element) => {
 
       let uResolution = gl->WebGL.getUniformLocation(program, "u_resolution")
       let uImage = gl->WebGL.getUniformLocation(program, "u_image")
-      let uKernel = gl->WebGL.getUniformLocation(program, "u_kernel")
+      let uFlipY = gl->WebGL.getUniformLocation(program, "u_flipY")
+      let uKernel = gl->WebGL.getUniformLocation(program, "u_kernel[0]")
       let uKernelWeight = gl->WebGL.getUniformLocation(program, "u_kernel_weight")
 
       let vao = gl->WebGL.createVertexArray
@@ -106,45 +110,114 @@ let draw = (canvas: Dom.element, image: Dom.element) => {
       let offset = 0
       gl->vertexAttribPointer(aTexCoord, size, kind, normalize, stride, offset)
 
-      let texture = gl->WebGL.createTexture
-      gl->WebGL.activeTexture(WebGL._TEXTURE0)
-      gl->WebGL.bindTexture(WebGL._TEXTURE_2D, texture)
-
-      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_WRAP_S, WebGL._CLAMP_TO_EDGE)
-      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_WRAP_T, WebGL._CLAMP_TO_EDGE)
-      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_MIN_FILTER, WebGL._NEAREST)
-      gl->WebGL.texParameteri(WebGL._TEXTURE_2D, WebGL._TEXTURE_MAG_FILTER, WebGL._NEAREST)
+      let originTexture = gl->Texture.make
 
       let mipLevel = 0
       let internalFormat = WebGL._RGBA
       let srcFormat = WebGL._RGBA
-      let srcType = WebGL._UNSIGNED_BYTE
+      let srcType = _UNSIGNED_BYTE
       gl->WebGL.texImage2D(WebGL._TEXTURE_2D, mipLevel, internalFormat, srcFormat, srcType, image)
 
-      canvas->Webapi.Canvas.CanvasElement.setWidth(Window.innerWidth * Window.devicePixelRatio)
-      canvas->Webapi.Canvas.CanvasElement.setHeight(Window.innerHeight * Window.devicePixelRatio)
-      let width = gl->WebGL.canvas->WebGL.width
-      let height = gl->WebGL.canvas->WebGL.height
+      let textures = []
+      let frameBuffers: array<WebGL.frameBufferT> = []
+      for _ in 0 to 1 {
+        let texture = gl->Texture.make
+        textures->Array.push(texture)
+        let minLevel = 0
+        let internalFormat = WebGL._RGBA
+        let border = 0
+        let srcFormat = WebGL._RGBA
+        let srcType = _UNSIGNED_BYTE
+        let data = null
+        gl->WebGL.texImage2DWithPixels(
+          WebGL._TEXTURE_2D,
+          minLevel,
+          internalFormat,
+          image->WebGL.width,
+          image->WebGL.height,
+          border,
+          srcFormat,
+          srcType,
+          data,
+        )
+        let fbo = gl->WebGL.createFramebuffer
+        frameBuffers->Array.push(fbo)
+        gl->WebGL.bindFramebuffer(WebGL._FRAMEBUFFER, Nullable.Value(fbo))
+        gl->WebGL.framebufferTexture2D(
+          WebGL._FRAMEBUFFER,
+          WebGL._COLOR_ATTACHMENT0,
+          WebGL._TEXTURE_2D,
+          texture,
+          mipLevel,
+        )
+      }
+
       gl->bindBuffer(_ARRAY_BUFFER, vertexBuffer)
       gl->rectangle(0., 0., image->WebGL.width, image->WebGL.height)
 
-      gl->WebGL.viewport(0., 0., width, height)
-      gl->clearColor(0.75, 0.85, 0.8, 1.0)
-      gl->clear(lor(_COLOR_BUFFER_BIT, _DEPTH_BUFFER_BIT))
-      gl->useProgram(program)
-      gl->WebGL.bindVertexArray(vao)
-      gl->WebGL.uniform2f(uResolution, width, height)
-      gl->WebGL.uniform1i(uImage, 0.)
-
+      let normal = [0., 0., 0., 0., 1., 0., 0., 0., 0.]
+      let gaussianBlur3 = [0., 1., 0., 1., 1., 1., 0., 1., 0.]
       let unsharpen = [-1., -1., -1., -1., 9., -1., -1., -1., -1.]
-      gl->WebGL.uniform1fv(uKernel, unsharpen)
-      let weight = unsharpen->Array.reduce(0., (a, b) => a +. b)
-      gl->WebGL.uniform1f(uKernelWeight, weight <= 0. ? 1. : weight)
+      let filters = [gaussianBlur3, unsharpen]
 
-      let primitiveType = _TRIANGLES
-      let offset = 0
-      let count = 6
-      gl->drawArrays(primitiveType, offset, count)
+      let drawWithKernel = (filter: array<float>) => {
+        gl->WebGL.uniform1fv(uKernel, filter)
+        let weight = filter->Array.reduce(0., (a, b) => a +. b)
+        gl->WebGL.uniform1f(uKernelWeight, weight <= 0. ? 1. : weight)
+
+        let primitiveType = _TRIANGLES
+        let offset = 0
+        let count = 6
+        gl->drawArrays(primitiveType, offset, count)
+      }
+
+      let setFrameBuffer = (fbo: Nullable.t<WebGL.frameBufferT>, width: float, height: float) => {
+        gl->WebGL.bindFramebuffer(WebGL._FRAMEBUFFER, fbo)
+        gl->WebGL.uniform2f(uResolution, width, height)
+        gl->WebGL.viewport(0., 0., width, height)
+      }
+
+      let drawEffects = () => {
+        canvas->Webapi.Canvas.CanvasElement.setWidth(Window.innerWidth * Window.devicePixelRatio)
+        canvas->Webapi.Canvas.CanvasElement.setHeight(Window.innerHeight * Window.devicePixelRatio)
+        let width = gl->WebGL.canvas->WebGL.width
+        let height = gl->WebGL.canvas->WebGL.height
+        gl->clearColor(0.75, 0.85, 0.8, 1.0)
+        gl->clear(lor(_COLOR_BUFFER_BIT, _DEPTH_BUFFER_BIT))
+        gl->useProgram(program)
+        gl->WebGL.bindVertexArray(vao)
+        gl->WebGL.activeTexture(WebGL._TEXTURE0)
+        gl->WebGL.bindTexture(WebGL._TEXTURE_2D, originTexture)
+        gl->WebGL.uniform1i(uImage, 0)
+        gl->WebGL.uniform1f(uFlipY, 1.)
+
+        for i in 0 to filters->Array.length - 1 {
+          frameBuffers[i]
+          ->Option.map(fbo =>
+            setFrameBuffer(Nullable.Value(fbo), image->WebGL.width, image->WebGL.height)
+          )
+          ->ignore
+
+          filters[i]
+          ->Option.map(filter => {
+            drawWithKernel(filter)
+          })
+          ->ignore
+
+          textures[i]
+          ->Option.map(tex => gl->WebGL.bindTexture(WebGL._TEXTURE_2D, tex))
+          ->ignore
+        }
+
+        gl->WebGL.uniform1f(uFlipY, -1.)
+        setFrameBuffer(null, width, height)
+
+        gl->clearColor(0.75, 0.85, 0.8, 1.0)
+        gl->clear(lor(_COLOR_BUFFER_BIT, _DEPTH_BUFFER_BIT))
+        drawWithKernel(normal)
+      }
+
+      drawEffects()
     })
     ->ignore
   | _ => ()
