@@ -17,7 +17,7 @@
   "uncurried": true,
   "namespace": true,
   "bsc-flags": ["-open RescriptCore"],
-  "bs-dependencies": ["@rescript/core", "rescript-webapi"],
+  "bs-dependencies": ["@rescript/core", "rescript-webapi", "@rescript/react"],
   "warnings": {
     "error": "+101"
   }

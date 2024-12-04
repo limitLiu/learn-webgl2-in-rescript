@@ -3,5 +3,11 @@ type params = {
   multiple?: bool,
 }
 
-@module("@tauri-apps/plugin-dialog")
-external open_: params => promise<string> = "open"
+module type T = {
+  type response
+}
+
+module Make = (T: T) => {
+  @module("@tauri-apps/plugin-dialog")
+  external open_: params => promise<T.response> = "open"
+}

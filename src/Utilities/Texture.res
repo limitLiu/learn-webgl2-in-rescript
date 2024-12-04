@@ -2,6 +2,9 @@ module Image = {
   type t = Dom.element
   type event = {@as("type") type_: string}
   @set external onload: (t, event => unit) => unit = "onload"
+  @set external onerror: (t, event => unit) => unit = "onerror"
+
+  @new external make: unit => t = "Image"
 }
 
 let make = (gl: WebGL.t) => {

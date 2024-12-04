@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import scalePx from "./plugins/postcss-scale-px";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import react from "@vitejs/plugin-react-swc";
 
 export default defineConfig(async () => ({
   resolve: {
@@ -10,6 +11,7 @@ export default defineConfig(async () => ({
     },
   },
   plugins: [
+    react(),
     nodePolyfills({
       protocolImports: true,
     }),

@@ -1,0 +1,16 @@
+.btnGroup {
+  display: flex;
+  flex-direction: column;
+  row-gap: 10px;
+  position: absolute;
+  right: 50px;
+  bottom: 50px;
+
+  .btn {
+    font-size: 16px;
+    background-color: white;
+    border: 2px solid #282828;
+    border-radius: 6px;
+    padding: 10px 30px;
+  }
+}

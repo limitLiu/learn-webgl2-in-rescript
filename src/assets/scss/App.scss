@@ -6,6 +6,11 @@
   box-sizing: border-box;
 }
 
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
 :root {
   @include LXGWWenKaiScreen;
   font-synthesis: none;
@@ -14,6 +19,14 @@
 }
 
 #root {
+  position: relative;
   width: 100%;
   height: 100%;
+}
+
+#canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
 }
